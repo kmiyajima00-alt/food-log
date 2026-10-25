@@ -51,6 +51,56 @@ label{display:block;font-size:13px;color:var(--sub);margin:10px 0 4px}
 .check{display:flex;align-items:center;gap:8px;margin-top:12px;color:var(--text)}
 .check input{width:auto}
 </style>
+<style>
+/* ===== かわいいテーマ ===== */
+:root{--pink:#ff8fa3;--peach:#ffb88c;--mint:#a8e6cf;--cream:#fff8f0;--ink:#5a4a4a;--shadow:0 6px 18px rgba(255,143,163,.22)}
+@media (prefers-color-scheme: dark){:root{--cream:#2a2326;--ink:#f5e9ec;--shadow:0 6px 18px rgba(0,0,0,.45)}}
+body{background:linear-gradient(180deg,#ffe4ec 0%,var(--cream) 340px) fixed;color:var(--ink);font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif}
+header{background:linear-gradient(135deg,var(--pink),var(--peach));border:none;border-radius:0 0 26px 26px;box-shadow:var(--shadow);color:#fff;padding-bottom:14px}
+header h1::before{content:"🍴 "}
+header h1{color:#fff;font-size:20px;letter-spacing:.05em}
+header button{background:rgba(255,255,255,.3);border:none;color:#fff;font-weight:600;border-radius:999px;padding:7px 14px}
+header button#add{background:#fff;color:var(--pink)}
+nav{background:transparent}
+nav button{background:#fff;border:none;border-radius:999px;color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.06);padding:9px 6px;font-weight:600}
+nav button.on{background:linear-gradient(135deg,var(--pink),var(--peach));color:#fff;box-shadow:var(--shadow)}
+nav button[data-tab=visited]::before{content:"🍽️ "}
+nav button[data-tab=wish]::before{content:"💭 "}
+nav button[data-tab=random]::before{content:"🎲 "}
+input,select,textarea{background:#fff;border:2px solid #ffd6e0;border-radius:16px;color:var(--ink);padding:10px 12px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pink)}
+label{color:#c77;font-weight:600}
+.card{background:#fff;border:none;border-radius:22px;box-shadow:var(--shadow);padding:16px;margin-bottom:16px}
+@media (prefers-color-scheme: dark){.card{background:#3a3034}input,select,textarea{background:#3a3034;border-color:#5a4449}.memo{background:#44363b!important}}
+.card h2{font-size:18px;color:var(--ink)}
+.meta{color:#b08c8c;font-size:13px}
+.stars{color:#ff9f43;font-size:18px;letter-spacing:3px;text-shadow:0 1px 0 rgba(0,0,0,.05)}
+.addr{color:#b08c8c}
+.memo{background:#fff0f4;border-radius:14px;border-left:4px solid var(--pink);padding:8px 12px;margin:8px 0}
+.photos img{width:130px;height:130px;border-radius:18px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.actions{gap:8px}
+.actions button,.actions .btn{border:none;border-radius:999px;padding:8px 14px;font-weight:600;background:#fff;color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.08)}
+.actions a.btn{background:linear-gradient(135deg,var(--mint),#c5f0e0);color:#2d6a55}
+.actions button.primary{background:linear-gradient(135deg,var(--pink),var(--peach));color:#fff}
+.actions button.danger{color:#e05a6e;background:#fff0f2}
+button.primary{background:linear-gradient(135deg,var(--pink),var(--peach));border:none;border-radius:999px;box-shadow:var(--shadow)}
+#pick{font-size:17px;padding:16px!important}
+#random-box .meta{color:var(--ink);text-align:center}
+.empty{font-size:15px}
+.empty::before{content:"🌱";display:block;font-size:40px;margin-bottom:6px}
+.login-box{background:#fff;border:none;border-radius:30px;box-shadow:var(--shadow);padding:28px 24px}
+@media (prefers-color-scheme: dark){.login-box{background:#3a3034}}
+.login-box h1{text-align:center;color:var(--pink);font-size:24px}
+.login-box h1::before{content:"🍴 "}
+.login-box button.primary{padding:14px!important}
+.err{text-align:center}
+#form-view{background:linear-gradient(180deg,#ffe4ec 0%,var(--cream) 300px)}
+#form-view h2{color:var(--pink);font-size:20px}
+#form-view form button[type=submit],#save{border-radius:999px!important;padding:14px!important;font-size:16px}
+#cancel{border:none;border-radius:999px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.08);color:var(--ink);padding:7px 14px}
+.check input{accent-color:var(--pink);width:22px;height:22px}
+#existing-count{color:var(--pink);font-weight:600;margin-top:6px}
+</style>
 </head>
 <body>
 
