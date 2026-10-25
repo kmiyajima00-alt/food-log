@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="食べたお店">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>食べたお店</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-storage-compat.js"></script>
+<style>
+:root{--bg:#faf7f2;--card:#fff;--text:#2b2b2b;--sub:#777;--accent:#e0673a;--line:#e5e0d8;--badge:#f3e6dc}
+@media (prefers-color-scheme: dark){:root{--bg:#1c1c1e;--card:#2c2c2e;--text:#f2f2f2;--sub:#aaa;--accent:#ff8a5c;--line:#3a3a3c;--badge:#3d3530}}
+[hidden]{display:none !important}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.5;padding-bottom:env(safe-area-inset-bottom)}
+button,.btn{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:8px;padding:6px 10px;cursor:pointer;text-decoration:none;display:inline-block}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.danger{color:#c33}
+button:disabled{opacity:.5}
+header{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line);padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;justify-content:space-between;align-items:center}
+h1{font-size:18px;margin:0}
+h2{font-size:17px;margin:0 0 4px}
+nav{display:flex;gap:6px;padding:10px 12px;position:sticky;top:calc(56px + env(safe-area-inset-top));background:var(--bg);z-index:4}
+nav button{flex:1}
+nav button.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+#filters{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 12px 10px}
+#filters .wide{grid-column:1/-1}
+input,select,textarea{font:inherit;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text)}
+textarea{min-height:60px;resize:vertical}
+label{display:block;font-size:13px;color:var(--sub);margin:10px 0 4px}
+#list,#random-box{padding:4px 12px 40px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+.meta{font-size:13px;color:var(--sub)}
+.stars{color:var(--accent);letter-spacing:2px}
+.addr{font-size:13px;color:var(--sub);margin-top:2px}
+.memo{background:var(--badge);border-radius:8px;padding:6px 8px;margin:6px 0;white-space:pre-wrap}
+.photos{display:flex;gap:6px;overflow-x:auto;margin:6px 0}
+.photos img{width:120px;height:120px;object-fit:cover;border-radius:8px;flex:0 0 auto;background:var(--line)}
+.actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.empty{color:var(--sub);text-align:center;padding:30px 0}
+.center{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.login-box{width:100%;max-width:360px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px}
+.err{color:#c33;font-size:13px;min-height:1.2em;margin-top:8px}
+#form-view{position:fixed;inset:0;background:var(--bg);z-index:10;overflow-y:auto;padding:calc(12px + env(safe-area-inset-top)) 16px 40px}
+#form-view .row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+#form-view form button[type=submit]{width:100%;margin-top:16px;padding:12px}
+.check{display:flex;align-items:center;gap:8px;margin-top:12px;color:var(--text)}
+.check input{width:auto}
+</style>
+</head>
+<body>
+
+<div id="login" class="center" hidden>
+  <form class="login-box" id="login-form">
+    <h1 style="margin-bottom:16px">食べたお店</h1>
+    <label for="email">メールアドレス</label>
+    <input id="email" type="email" autocomplete="username" required>
+    <label for="pass">パスワード</label>
+    <input id="pass" type="password" autocomplete="current-password" required>
+    <button class="primary" type="submit" style="width:100%;margin-top:16px;padding:12px">ログイン</button>
+    <div class="err" id="login-err"></div>
+  </form>
+</div>
+
+<div id="app" hidden>
+  <header>
+    <h1>食べたお店</h1>
+    <div style="display:flex;gap:6px">
+      <button class="primary" id="add">＋ 新規</button>
+      <button id="logout">ログアウト</button>
+    </div>
+  </header>
+
+  <nav>
+    <button data-tab="visited" class="on">記録</button>
+    <button data-tab="wish">行きたい</button>
+    <button data-tab="random">今日どこ？</button>
+  </nav>
+
+  <div id="filters">
+    <input id="q" class="wide" type="search" placeholder="店名・住所・メモ・メニューで検索">
+    <input id="genre" type="text" placeholder="ジャンル（例：ラーメン）">
+    <select id="minRating">
+      <option value="">評価：すべて</option>
+      <option value="3">★3以上</option>
+      <option value="4">★4以上</option>
+      <option value="5">★5のみ</option>
+    </select>
+    <select id="pref" class="wide">
+      <option value="">好み：すべて</option>
+      <option value="both">二人とも好き</option>
+      <option value="dislike">どちらか苦手</option>
+    </select>
+  </div>
+
+  <div id="list"></div>
+
+  <div id="random-box" hidden>
+    <p class="meta" style="margin:8px 0">行きたいリストからランダムに選びます（好みの絞り込みも効きます）。</p>
+    <button class="primary" id="pick" style="width:100%;padding:12px">今日どこにする？</button>
+    <div id="random-result" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<div id="form-view" hidden>
+  <div class="row">
+    <h2 id="form-title">新しいお店</h2>
+    <button id="cancel">閉じる</button>
+  </div>
+  <form id="shop-form">
+    <label for="f-name">店名 *</label>
+    <input id="f-name" required>
+    <label for="f-date">日付</label>
+    <input id="f-date" type="date">
+    <label for="f-address">住所（Googleマップで開けるように入力）</label>
+    <input id="f-address" placeholder="例：札幌市中央区南1条西3丁目">
+    <label for="f-genre">ジャンル</label>
+    <input id="f-genre" placeholder="例：ラーメン、焼肉、カフェ">
+    <label for="f-rating">星評価</label>
+    <select id="f-rating">
+      <option value="0">未評価</option>
+      <option value="1">★1</option>
+      <option value="2">★2</option>
+      <option value="3">★3</option>
+      <option value="4">★4</option>
+      <option value="5">★5</option>
+    </select>
+    <label for="f-pref">好み</label>
+    <select id="f-pref">
+      <option value="">未設定</option>
+      <option value="both">二人とも好き</option>
+      <option value="dislike">どちらか苦手</option>
+    </select>
+    <label for="f-menu">注文メニュー</label>
+    <textarea id="f-menu" placeholder="例：醤油ラーメン、餃子"></textarea>
+    <label for="f-memo">一言メモ</label>
+    <textarea id="f-memo"></textarea>
+    <label for="f-pics">写真（複数選べます）</label>
+    <input id="f-pics" type="file" accept="image/*" multiple>
+    <div class="meta" id="existing-count"></div>
+    <label class="check"><input id="f-visited" type="checkbox"> 行った（記録に入れる）</label>
+    <button class="primary" type="submit" id="save">保存</button>
+  </form>
+</div>
+
+<script>
+// ===== Firebase設定 =====
+const firebaseConfig = {
+  apiKey: "AIzaSyDyn7xwawUYVtWVMHuutTA7CFt9jMKnnps",
+  authDomain: "where-we-ate.firebaseapp.com",
+  projectId: "where-we-ate",
+  storageBucket: "where-we-ate.firebasestorage.app",
+  messagingSenderId: "699248720876",
+  appId: "1:699248720876:web:2c36dc81d85630f5c61ec9"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const storage = firebase.storage();
+
+// ===== 共通 =====
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const today = () => new Date().toLocaleDateString('sv-SE');
+const PREF = {both:'二人とも好き', dislike:'どちらか苦手'};
+
+let shops = [];
+let tab = 'visited';
+let editing = null;
+let unsubscribe = null;
+const photoCache = {};
+
+// ===== ログイン =====
+auth.onAuthStateChanged(user => {
+  $('#login').hidden = !!user;
+  $('#app').hidden = !user;
+  if (user) listen();
+  else { if (unsubscribe) { unsubscribe(); unsubscribe = null; } shops = []; render(); }
+});
+
+$('#login-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('#login-err').textContent = '';
+  try {
+    await auth.signInWithEmailAndPassword($('#email').value.trim(), $('#pass').value);
+  } catch (err) {
+    $('#login-err').textContent = 'ログインできませんでした。メールアドレスとパスワードを確認してください。';
+  }
+});
+$('#logout').addEventListener('click', () => auth.signOut());
+
+// ===== データ読み込み（リアルタイム同期） =====
+function listen() {
+  if (unsubscribe) return;
+  unsubscribe = db.collection('shops').orderBy('date', 'desc').onSnapshot(snap => {
+    shops = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    render();
+  }, err => alert('データを読み込めませんでした: ' + err.message));
+}
+
+// ===== タブ・絞り込み =====
+document.querySelectorAll('nav button[data-tab]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    tab = btn.dataset.tab;
+    document.querySelectorAll('nav button[data-tab]').forEach(b => b.classList.toggle('on', b === btn));
+    $('#random-box').hidden = tab !== 'random';
+    $('#list').hidden = tab === 'random';
+    $('#filters').hidden = tab === 'random';
+    render();
+  });
+});
+['#q', '#genre', '#minRating', '#pref'].forEach(id => $(id).addEventListener('input', render));
+
+function filtered() {
+  const q = $('#q').value.trim().toLowerCase();
+  const g = $('#genre').value.trim().toLowerCase();
+  const min = Number($('#minRating').value);
+  const pref = $('#pref').value;
+  return shops.filter(s => {
+    if (tab === 'visited' && !s.visited) return false;
+    if (tab === 'wish' && s.visited) return false;
+    if (q && ![s.name, s.address, s.memo, s.menu].some(v => (v || '').toLowerCase().includes(q))) return false;
+    if (g && !(s.genre || '').toLowerCase().includes(g)) return false;
+    if (min && (s.rating || 0) < min) return false;
+    if (pref && s.pref !== pref) return false;
+    return true;
+  });
+}
+
+// ===== 描画 =====
+function render() {
+  if (tab === 'random') return;
+  const list = $('#list');
+  list.innerHTML = '';
+  const items = filtered();
+  if (!items.length) {
+    list.innerHTML = '<p class="empty">該当するお店がありません</p>';
+    return;
+  }
+  items.forEach(s => list.appendChild(card(s)));
+}
+
+function card(s) {
+  const el = document.createElement('article');
+  el.className = 'card';
+  const r = s.rating || 0;
+  const stars = s.visited && r ? '★'.repeat(r) + '☆'.repeat(5 - r) : '';
+  const mapUrl = 'https://www.google.com/maps/search/?api=1&query=' +
+    encodeURIComponent(((s.name || '') + ' ' + (s.address || '')).trim());
+  el.innerHTML = `
+    <h2>${esc(s.name)}</h2>
+    <div class="meta">${esc(s.date || '')}${s.genre ? ' ・ ' + esc(s.genre) : ''}${PREF[s.pref] ? ' ・ <b>' + PREF[s.pref] + '</b>' : ''}</div>
+    ${stars ? `<div class="stars">${stars}</div>` : ''}
+    ${s.address ? `<div class="addr">${esc(s.address)}</div>` : ''}
+    ${s.menu ? `<div>注文：${esc(s.menu)}</div>` : ''}
+    ${s.memo ? `<div class="memo">${esc(s.memo)}</div>` : ''}
+    <div class="photos"></div>
+    <div class="actions">
+      <a class="btn" href="${mapUrl}" target="_blank" rel="noopener">地図で開く</a>
+      ${s.visited ? '' : '<button class="primary" data-act="visit">行った！</button>'}
+      <button data-act="edit">編集</button>
+      <button class="danger" data-act="del">削除</button>
+    </div>`;
+  (s.photos || []).forEach(p => {
+    const img = document.createElement('img');
+    img.alt = '';
+    loadPhoto(p).then(url => { if (url) img.src = url; });
+    el.querySelector('.photos').appendChild(img);
+  });
+  el.addEventListener('click', e => {
+    const act = e.target.dataset.act;
+    if (act === 'edit') openForm(s);
+    if (act === 'visit') openForm(s, true);
+    if (act === 'del') removeShop(s);
+  });
+  return el;
+}
+
+function loadPhoto(path) {
+  if (!photoCache[path]) {
+    photoCache[path] = storage.ref(path).getDownloadURL().catch(() => '');
+  }
+  return photoCache[path];
+}
+
+// ===== 削除 =====
+async function removeShop(s) {
+  if (!confirm(`「${s.name}」を削除しますか？`)) return;
+  try {
+    for (const p of s.photos || []) {
+      try { await storage.ref(p).delete(); } catch (e) {}
+    }
+    await db.collection('shops').doc(s.id).delete();
+  } catch (err) {
+    alert('削除できませんでした: ' + err.message);
+  }
+}
+
+// ===== 入力フォーム =====
+function openForm(s = null, visiting = false) {
+  editing = s;
+  $('#form-title').textContent = !s ? '新しいお店' : (visiting ? '行ったお店を記録' : '編集');
+  $('#f-name').value = s?.name || '';
+  $('#f-date').value = visiting ? today() : (s?.date || today());
+  $('#f-address').value = s?.address || '';
+  $('#f-genre').value = s?.genre || '';
+  $('#f-rating').value = String(s?.rating || 0);
+  $('#f-pref').value = s?.pref || '';
+  $('#f-menu').value = s?.menu || '';
+  $('#f-memo').value = s?.memo || '';
+  $('#f-pics').value = '';
+  $('#f-visited').checked = visiting || !!s?.visited;
+  $('#existing-count').textContent = s?.photos?.length ? `登録済みの写真 ${s.photos.length} 枚（追加もできます）` : '';
+  $('#form-view').hidden = false;
+  $('#form-view').scrollTop = 0;
+}
+
+function closeForm() {
+  $('#form-view').hidden = true;
+  editing = null;
+}
+
+$('#add').addEventListener('click', () => openForm());
+$('#cancel').addEventListener('click', closeForm);
+
+$('#shop-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const name = $('#f-name').value.trim();
+  if (!name) return alert('店名を入力してください');
+
+  const data = {
+    name,
+    date: $('#f-date').value || today(),
+    address: $('#f-address').value.trim(),
+    genre: $('#f-genre').value.trim(),
+    rating: Number($('#f-rating').value),
+    pref: $('#f-pref').value,
+    menu: $('#f-menu').value.trim(),
+    memo: $('#f-memo').value.trim(),
+    visited: $('#f-visited').checked,
+    photos: [...(editing?.photos || [])]
+  };
+
+  const btn = $('#save');
+  btn.disabled = true;
+  btn.textContent = '保存中…';
+  try {
+    const ref = editing ? db.collection('shops').doc(editing.id) : db.collection('shops').doc();
+    for (const file of $('#f-pics').files) {
+      const safe = file.name.replace(/[^\w.-]/g, '_');
+      const path = `photos/${ref.id}/${Date.now()}_${Math.random().toString(36).slice(2, 7)}_${safe}`;
+      await storage.ref(path).put(file);
+      data.photos.push(path);
+    }
+    if (editing) {
+      await ref.update(data);
+    } else {
+      await ref.set({ ...data, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    }
+    closeForm();
+  } catch (err) {
+    alert('保存できませんでした: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '保存';
+  }
+});
+
+// ===== 今日どこにする？ =====
+let lastPickId = null;
+$('#pick').addEventListener('click', () => {
+  const pool = shops.filter(s => !s.visited && (!$('#pref').value || s.pref === $('#pref').value));
+  const out = $('#random-result');
+  out.innerHTML = '';
+  if (!pool.length) {
+    out.innerHTML = '<p class="empty">行きたいリストに候補がありません</p>';
+    return;
+  }
+  let pick = pool[Math.floor(Math.random() * pool.length)];
+  if (pool.length > 1 && pick.id === lastPickId) {
+    pick = pool.find(s => s.id !== lastPickId);
+  }
+  lastPickId = pick.id;
+  out.appendChild(card(pick));
+});
+</script>
+</body>
+</html>
